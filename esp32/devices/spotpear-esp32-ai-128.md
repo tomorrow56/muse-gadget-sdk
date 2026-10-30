@@ -83,7 +83,9 @@ fallback. It includes Japanese punctuation, hiragana, katakana and BMP CJK
 ideographs. The optional Noto Sans SC subset is left off to avoid its reduced
 kanji coverage. On this 240 x 240 screen the SDK switches Japanese captions
 to its larger CJK caption layout. The user confirmed readable Japanese
-voice-note replies on the physical screen. Standard replies remain text.
+voice-note replies on the physical screen. Captions use a 200 px wide band
+at the vertical centre of the round display, with paging calculated for
+that width so Japanese lines clear the curved edges. Standard replies remain text.
 
 ## Android client compatibility
 
