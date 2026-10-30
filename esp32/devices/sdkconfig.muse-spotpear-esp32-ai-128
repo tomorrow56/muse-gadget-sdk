@@ -21,8 +21,9 @@ CONFIG_ESP_PHY_INIT_DATA_IN_PARTITION=n
 # Experimental OPPO Android 11 client handshake compatibility.
 CONFIG_HOMEHUB_BLE_DEVICE_INFO_ON_SUBSCRIBE=y
 
-# Live spoken replies: tap BOOT to call; hold BOOT for a voice note.
-CONFIG_MUSE_REALTIME_VOICE=y
+# Tap to start recording, tap again to send; replies are Japanese text.
+CONFIG_MUSE_REALTIME_VOICE=n
+CONFIG_MUSE_VOICE_NOTE_TOGGLE=y
 
 # Japanese captions: Unifont covers kana and the full BMP CJK ideograph range.
 CONFIG_MUSE_CJK_FONT=y

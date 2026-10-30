@@ -17,7 +17,7 @@ is tracked separately below.
 | GC9A01 | 240×240, SPI3, mode 0, 40 MHz, BGR, inversion on, mirror X only |
 | LCD pins | DC10 / CS13 / CLK14 / MOSI17 / RESET18 |
 | Backlight | GPIO3, active high, PWM |
-| BOOT | GPIO0, active low; pairing confirmation and push-to-talk |
+| BOOT | GPIO0, active low; pairing confirmation and toggle voice notes |
 | Speaker | I2S0 TX, BCLK15 / WS16 / DATA7, 24 kHz, 32-bit left slot |
 | Microphone | I2S1 RX, BCLK5 / WS4 / DATA6, 16 kHz, 32-bit left slot; L/R grounded |
 
@@ -53,7 +53,7 @@ As of 2026-10-30, boot, PSRAM, UI/audio initialization, iOS pairing and
 Wi-Fi setup, microphone voice-note capture, audible local speaker loopback,
 and readable Japanese replies have been verified on one unit. The final
 application is 2,953,216 bytes with about 30% of the 4 MB slot free. The host
-suite passes 834 tests (2 skipped). Video, image rendering, OTA, repeated
+suite passes 837 tests (2 skipped). Video, image rendering, OTA, repeated
 sleep/wake cycles and long-running use remain unverified.
 
 Switching from Xiaozhi changes the partition layout: do not flash the Muse
@@ -61,16 +61,18 @@ application at Xiaozhi's application offset. Preserve the private full-flash
 backup, then use the Muse build's bootloader, partition table and flash_args
 when switching firmware. Do not publish full-flash dumps, NVS or SDK tokens.
 
-## Live voice calls
+## Voice-note controls
 
-The SpotPear profile enables the SDK's experimental live voice calls. Tap BOOT
-briefly to start a call, then speak; tap again to hang up. Holding BOOT still
-records a voice note, whose reply is text only in the standard SDK. The
-paired Muse VM must accept gadget calls. This board has no echo cancellation:
-the microphone is closed during playback. No greeting is enabled by default.
-On the tested Muse endpoint, POST /voice/realtime returned HTTP 404 and no
-audio was received. Tap-to-call reached the server, but live conversation
-is not validated; the deployment/admission cause remains undetermined.
+The profile enables CONFIG_MUSE_VOICE_NOTE_TOGGLE: press BOOT once to start
+recording, release it and speak, then press BOOT again to send the note.
+The first release is ignored; recording automatically stops after 15 seconds.
+A press that wakes the display also starts recording. Replies appear as
+Japanese captions; no TTS is included.
+
+Experimental live calls are disabled in this profile. On the tested Muse
+endpoint, POST /voice/realtime returned HTTP 404 and no audio was received.
+The deployment/admission cause remains undetermined. To experiment with
+live calls separately, disable toggle notes and enable MUSE_REALTIME_VOICE.
 
 Local speaker loopback was audible on 2026-10-30 at volume 70. Standard
 voice-note replies intentionally use silent PCM for caption timing, so the
