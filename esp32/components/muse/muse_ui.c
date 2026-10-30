@@ -946,6 +946,10 @@ static void build_screen(void)
     int meter_y = cap_top - 6 - METER_SEG_PX / 2;
     int art_bottom = meter_y - METER_SEG_PX / 2 - 4;
     s_big_y = s_small ? 0 : art_bottom - (s_canvas_px / 2 - ART_BLANK_ROWS * (s_canvas_px / MUSE_PX_W));
+#if CONFIG_MUSE_BOARD_SPOTPEAR_ESP32_AI_128
+    /* The 128 px avatar ends at y=159; Japanese captions start at y=164. */
+    s_big_y = -25;
+#endif
 
     /* The character. */
     muse_image_init();
@@ -1004,9 +1008,9 @@ static void build_screen(void)
          * legible. A tall screen has room to keep them above the mic icon. */
         int caption_w = s_w;
 #if CONFIG_MUSE_BOARD_SPOTPEAR_ESP32_AI_128
-        /* A 200 px central band clears the curved edge of the 240 px panel,
-         * including the taller two-line Japanese captions. */
-        caption_w -= 40;
+        /* The lower chord of the round panel is narrower than its centre.
+         * All corners of this band stay inside the 240 px circle. */
+        caption_w = 160;
 #endif
         lv_obj_set_size(s_caption_lbl, caption_w, 2 * 8 + 2 + 4);
         lv_obj_set_style_pad_ver(s_caption_lbl, 2, 0);
@@ -1016,7 +1020,9 @@ static void build_screen(void)
         lv_label_set_long_mode(s_caption_lbl, LV_LABEL_LONG_MODE_DOTS);
         /* Touch screens need the caption above the navigation dots too. */
 #if CONFIG_MUSE_BOARD_SPOTPEAR_ESP32_AI_128
-        lv_obj_center(s_caption_lbl);
+        /* Like the Waveshare touch layout, reserve space below the caption;
+         * four extra pixels clear the circle while keeping it below Muse. */
+        lv_obj_align(s_caption_lbl, LV_ALIGN_BOTTOM_MID, 0, -34);
 #else
         lv_obj_align(s_caption_lbl, LV_ALIGN_BOTTOM_MID, 0, (s_tall || s_tv) ? -30 : -3);
 #endif

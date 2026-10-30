@@ -324,6 +324,7 @@ static const muse_board_t s_board = {
     .talk_button = "boot",
     .talk_hint = { LV_ALIGN_BOTTOM_MID, 0, -12 },
     .frame_ms = 40,
+    .avatar_px = 128,
     .init = init,
     .display_start = display_start,
     .display_lock = display_lock,

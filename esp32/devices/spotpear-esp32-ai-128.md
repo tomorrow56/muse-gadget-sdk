@@ -83,9 +83,11 @@ fallback. It includes Japanese punctuation, hiragana, katakana and BMP CJK
 ideographs. The optional Noto Sans SC subset is left off to avoid its reduced
 kanji coverage. On this 240 x 240 screen the SDK switches Japanese captions
 to its larger CJK caption layout. The user confirmed readable Japanese
-voice-note replies on the physical screen. Captions use a 200 px wide band
-at the vertical centre of the round display, with paging calculated for
-that width so Japanese lines clear the curved edges. Standard replies remain text.
+voice-note replies on the physical screen. Following the Waveshare LCD128
+layout, captions sit near the bottom, 34 px above the screen edge, in a
+160 px wide band. The avatar is reduced to 128 px and moved up by 25 px,
+leaving a 5 px gap above the two-line Japanese band. Paging uses the narrower
+band width so text clears the curved edges. Standard replies remain text.
 
 ## Android client compatibility
 
