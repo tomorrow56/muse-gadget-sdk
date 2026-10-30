@@ -1,0 +1,93 @@
+# SpotPear ESP32-AI-1.28 v1.0 (experimental)
+
+This profile targets the old, non-legged ESP32-S3 board with a MAX98357A
+speaker amplifier and NP0557 microphone. It does not target the ES8311
+`sp-esp32-s3-1.28-box` revision.
+
+The pin map and panel setup come from the locally inspected
+`tomorrow56/xiaozhi-esp32` commit `fed7f14`,
+`main/boards/spotpear/spotpear-esp32-ai-1.28/`.
+The user verified that reference firmware on this hardware; Muse validation
+is tracked separately below.
+
+| Peripheral | Configuration |
+| --- | --- |
+| Memory | 16 MB DIO flash, 8 MB octal PSRAM at 80 MHz |
+| USB console | Native USB Serial/JTAG (303a:1001); identify the actual unit before flashing |
+| GC9A01 | 240×240, SPI3, mode 0, 40 MHz, BGR, inversion on, mirror X only |
+| LCD pins | DC10 / CS13 / CLK14 / MOSI17 / RESET18 |
+| Backlight | GPIO3, active high, PWM |
+| BOOT | GPIO0, active low; pairing confirmation and push-to-talk |
+| Speaker | I2S0 TX, BCLK15 / WS16 / DATA7, 24 kHz, 32-bit left slot |
+| Microphone | I2S1 RX, BCLK5 / WS4 / DATA6, 16 kHz, 32-bit left slot; L/R grounded |
+
+No touch, MCLK, audio-control I2C, battery gauge, or software power latch is
+configured. There is no auxiliary menu button. Use BLE setup and the existing
+serial settings interface. This port uses Muse's avatar, not the Xiaozhi
+StackChan rendering code.
+
+Muse's audio API uses 16 kHz stereo PCM. The board adapter reads the left
+microphone slot and supplies a silent right slot, and converts speaker PCM
+to 24 kHz with streaming linear interpolation before writing 32-bit samples.
+Volume uses esp_codec_dev software volume; microphone gain is applied after
+DC removal with saturation. Interpolation preserves timing but is not a
+high-quality reconstruction filter; listening tests remain necessary.
+Audio close/open stops and restarts the two I2S controllers independently.
+
+## Build
+
+Use ESP-IDF **v6.0.1**, as required by this repository, separately from the
+reference Xiaozhi project's v6.1 installation.
+
+```sh
+tools/muse/board.sh build spotpear
+```
+
+Store the SDK token in
+`build-muse-spotpear-esp32-ai-128/sdkconfig`, never in the board overlay.
+Firmware binaries containing the personal token are private artifacts.
+
+## Hardware validation
+
+As of 2026-10-30, boot, PSRAM, UI/audio initialization, iOS pairing and
+Wi-Fi setup, microphone voice-note capture, audible local speaker loopback,
+and readable Japanese replies have been verified on one unit. The final
+application is 2,953,216 bytes with about 30% of the 4 MB slot free. The host
+suite passes 834 tests (2 skipped). Video, image rendering, OTA, repeated
+sleep/wake cycles and long-running use remain unverified.
+
+Switching from Xiaozhi changes the partition layout: do not flash the Muse
+application at Xiaozhi's application offset. Preserve the private full-flash
+backup, then use the Muse build's bootloader, partition table and flash_args
+when switching firmware. Do not publish full-flash dumps, NVS or SDK tokens.
+
+## Live voice calls
+
+The SpotPear profile enables the SDK's experimental live voice calls. Tap BOOT
+briefly to start a call, then speak; tap again to hang up. Holding BOOT still
+records a voice note, whose reply is text only in the standard SDK. The
+paired Muse VM must accept gadget calls. This board has no echo cancellation:
+the microphone is closed during playback. No greeting is enabled by default.
+On the tested Muse endpoint, POST /voice/realtime returned HTTP 404 and no
+audio was received. Tap-to-call reached the server, but live conversation
+is not validated; the deployment/admission cause remains undetermined.
+
+Local speaker loopback was audible on 2026-10-30 at volume 70. Standard
+voice-note replies intentionally use silent PCM for caption timing, so the
+SPEAKING label alone does not indicate generated speech.
+
+## Japanese captions
+
+The profile enables CONFIG_MUSE_CJK_FONT with the bundled 16 px GNU Unifont
+fallback. It includes Japanese punctuation, hiragana, katakana and BMP CJK
+ideographs. The optional Noto Sans SC subset is left off to avoid its reduced
+kanji coverage. On this 240 x 240 screen the SDK switches Japanese captions
+to its larger CJK caption layout. The user confirmed readable Japanese
+voice-note replies on the physical screen. Standard replies remain text.
+
+## Android client compatibility
+
+The profile retains an opt-in BLE metadata announcement experiment from
+debugging OPPO Reno3 A / Android 11 with Muse 13.0.0.4.159. It did not fix
+that app's API-level writeDescriptor exception. See the
+[diagnostic result](../../OPPO-ANDROID11-DIAGNOSTICS.md); iOS setup succeeded.
