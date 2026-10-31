@@ -1,16 +1,20 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates. Apache-2.0.
 // Muse's existing USB console protocol. No SDK tokens or firmware writes.
+export class MuseSerialError extends Error {
+  constructor(code, message) { super(message); this.code = code; }
+}
+
 export const SETTINGS = Object.freeze({
   sleep: { min: 0, max: 3600 }, brightness: { min: 10, max: 100 },
   volume: { min: 0, max: 100 }, mic_gain: { min: 0, max: 36 }, speaker: { boolean: true },
 });
 
 export function validateSetting(key, value) {
-  const rule = SETTINGS[key];
-  if (!rule) throw new Error('この設定には対応していません。');
+  const rule = Object.hasOwn(SETTINGS, key) ? SETTINGS[key] : null;
+  if (!rule) throw new MuseSerialError('KEY', 'This setting is not supported.');
   if (rule.boolean ? typeof value !== 'boolean' :
     !Number.isInteger(value) || value < rule.min || value > rule.max) {
-    throw new Error('設定値が範囲外です。');
+    throw new MuseSerialError('VALUE', 'The value is outside the allowed range.');
   }
   return rule.boolean ? Number(value) : value;
 }
@@ -19,7 +23,7 @@ export function parseStatus(line) {
   const at = line.indexOf('@status ');
   if (at < 0) return null;
   const status = JSON.parse(line.slice(at + 8));
-  if (typeof status.board !== 'string' || !status.device) throw new Error('Museの設定情報を確認できません。');
+  if (typeof status.board !== 'string' || !status.device) throw new MuseSerialError('STATUS', 'The device returned an invalid Muse status.');
   for (const key of Object.keys(SETTINGS)) validateSetting(key, status.device[key]);
   return status;
 }
@@ -44,7 +48,7 @@ export class MuseSerial {
         try { return await this.query(Math.min(2500, Math.max(1, deadline - Date.now()))); }
         catch (error) { if (error.code !== 'TIMEOUT' || !this.online) throw error; }
       } while (Date.now() < deadline);
-      throw new Error('実機から応答がありません。他のシリアルモニターを閉じ、USBを接続し直してください。');
+      throw new MuseSerialError('CONNECT_TIMEOUT', 'No device response. Close other serial monitors and reconnect USB.');
     } catch (error) { await this.close(); throw error; }
   }
   async readLoop() {
@@ -54,7 +58,7 @@ export class MuseSerial {
         if (done) break;
         this.feed(value);
       }
-      if (this.online) this.fail(new Error('USB接続が切れました。接続し直してください。'));
+      if (this.online) this.fail(new MuseSerialError('DISCONNECTED', 'USB connection lost. Reconnect the device.'));
     } catch (error) { if (this.online) this.fail(error); }
     finally { this.reader.releaseLock(); }
   }
@@ -79,7 +83,7 @@ export class MuseSerial {
   }
   enqueue(action) {
     const task = this.queue.then(() => {
-      if (!this.online) throw new Error('USBで接続してください。');
+      if (!this.online) throw new MuseSerialError('NOT_CONNECTED', 'Connect a USB device first.');
       return action();
     });
     this.queue = task.catch(() => {});
@@ -91,8 +95,8 @@ export class MuseSerial {
       const finish = (fn, result) => { clearTimeout(waiter.timer); this.waiters.delete(waiter); fn(result); };
       waiter = { match, resolve: v => finish(resolve, v), reject: e => finish(reject, e) };
       waiter.timer = setTimeout(() => {
-        const error = new Error('応答を確認できませんでした。設定を読み直してください。');
-        error.code = 'TIMEOUT'; waiter.reject(error);
+        const error = new MuseSerialError('TIMEOUT', 'No response was confirmed. Reload the device values.');
+        waiter.reject(error);
       }, timeout);
       this.waiters.add(waiter);
     });
@@ -111,11 +115,11 @@ export class MuseSerial {
         const at = line.indexOf(`cmd ${command} -> `);
         if (at < 0) return null;
         const result = line.slice(at + `cmd ${command} -> `.length).trim();
-        if (result !== 'ok') throw new Error('実機が設定を受け付けませんでした。');
+        if (result !== 'ok') throw new MuseSerialError('DEVICE_REJECTED', 'The device rejected this setting.');
         return true;
       });
       const status = await this.queryNow();
-      if (status.device[key] !== value) throw new Error('設定の読み戻し値が一致しません。もう一度読み込んでください。');
+      if (status.device[key] !== value) throw new MuseSerialError('READBACK', 'The readback did not match. Reload the device values.');
       return status;
     });
   }
@@ -127,7 +131,7 @@ export class MuseSerial {
   }
   async close() {
     this.online = false;
-    for (const waiter of [...this.waiters]) waiter.reject(new Error('USB接続を終了しました。'));
+    for (const waiter of [...this.waiters]) waiter.reject(new MuseSerialError('CLOSED', 'USB connection closed.'));
     await this.reader?.cancel().catch(() => {});
     await this.reading;
     this.writer?.releaseLock();

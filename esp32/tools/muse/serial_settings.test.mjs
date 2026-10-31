@@ -55,7 +55,7 @@ test('parallel changes are serialized as write/readback pairs', async t => {
 });
 test('out-of-range values and unknown commands never reach serial', async t => {
   const { port, session } = await connect(); t.after(() => session.close());
-  for (const [key, value] of [['sleep', -1], ['sleep', 3601], ['sleep', NaN], ['brightness', 0], ['mic_gain', 37], ['speaker', 1], ['wifi.forget', 1]]) {
+  for (const [key, value] of [['sleep', -1], ['sleep', 3601], ['sleep', NaN], ['brightness', 0], ['mic_gain', 37], ['speaker', 1], ['wifi.forget', 1], ['__proto__', 0], ['constructor', 0]]) {
     assert.throws(() => session.set(key, value));
   }
   assert.deepEqual(port.commands, ['>status']);
@@ -63,12 +63,12 @@ test('out-of-range values and unknown commands never reach serial', async t => {
 test('device rejection is not reported as saved', async t => {
   const { port, session } = await connect(); t.after(() => session.close());
   port.onWrite = () => port.emit('muse_ble: cmd volume=20 -> error: bad value\n');
-  await assert.rejects(session.set('volume', 20), /受け付けません/);
+  await assert.rejects(session.set('volume', 20), { code: 'DEVICE_REJECTED' });
 });
 test('ACK with mismatched readback is an error', async t => {
   const { port, session } = await connect(); t.after(() => session.close());
   port.onWrite = command => command === '>status' ? port.status() : port.emit('muse_ble: cmd volume=20 -> ok\n');
-  await assert.rejects(session.set('volume', 20), /一致しません/);
+  await assert.rejects(session.set('volume', 20), { code: 'READBACK' });
 });
 test('irrelevant ACKs do not satisfy a command; timeout leaves no waiter', async t => {
   const { port, session } = await connect(); t.after(() => session.close());
@@ -87,7 +87,7 @@ test('unplug rejects active requests and releases locks', async () => {
   let disconnected = false;
   const { port, session } = await connect(new Port(), { onDisconnect: () => { disconnected = true; } });
   port.onWrite = () => port.controller.close();
-  await assert.rejects(session.query(), /USB接続が切れました/);
+  await assert.rejects(session.query(), { code: 'DISCONNECTED' });
   await session.close(); assert.ok(disconnected); assert.ok(port.closed);
 });
 test('wake uses only the wake character and read-only status', async t => {
@@ -102,6 +102,6 @@ test('missing fields, malformed JSON, and unsupported device status fail', () =>
 test('connect timeout closes the port and never changes settings', async () => {
   const port = new Port(); port.onWrite = () => {};
   const session = new MuseSerial(port);
-  await assert.rejects(session.connect({ readyTimeout: 20 }), /応答がありません/);
+  await assert.rejects(session.connect({ readyTimeout: 20 }), { code: 'CONNECT_TIMEOUT' });
   assert.ok(port.closed); assert.deepEqual(port.commands, ['>status']);
 });

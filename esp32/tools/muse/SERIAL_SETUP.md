@@ -4,6 +4,14 @@ USBで接続したMuseの現在値をブラウザに表示し、消灯時間・�
 スピーカーON/OFF・マイクゲインを変更する。既存の`>status`と設定コマンドを
 使うため、対応するMuseファームウェアの書き換えは不要。
 BLE設定画面`ble_setup.html`とは別の、USB接続用の画面。
+初期表示は英語。上部のLanguageで日本語へ切り替えられ、接続や未保存の編集は維持する。
+再読み込み時は英語へ戻る。言語はブラウザストレージへ保存しない。
+
+Complete device statusには`>status`の全項目を読み取り専用で表示する。
+board/chat、機器情報、Wi-Fi（SSID/IP/RSSI）、Muse、Link、電池、各設定値、
+直前のコマンド結果を含む。将来追加されるキーも自動表示し、元のJSONも確認できる。
+キーと実機が返した値は翻訳せず、説明・操作UI・メッセージ・履歴を言語切り替えする。
+`false`、`0`、`null`、空文字、空の配列・オブジェクトも省略しない。
 
 ## 起動
 
@@ -32,7 +40,7 @@ Chromeで[USB設定画面](http://localhost:8765/serial_setup.html)を開き、
 再接続する。応答や読み戻しを確認できなかった保存は成功扱いにしない。
 
 外部ライブラリ、CDN、通信API、ブラウザストレージは使わない。
-USBで読み取る状態にはWi-Fi名や接続情報が含まれるが、画面の操作履歴には
+Status表示にはWi-Fi名や接続情報も含まれる。画面の操作履歴には
 生のシリアル出力や会話本文を記録しない。
 
 ## テスト
@@ -40,8 +48,10 @@ USBで読み取る状態にはWi-Fi名や接続情報が含まれるが、画面
 Node.js 22以降で、実機を使わない通信テストを実行できる。
 
 ```sh
-node --test tools/muse/serial_settings.test.mjs
+node --test tools/muse/serial_settings.test.mjs tools/muse/serial_status.test.mjs
 ```
 
 分割されたUTF-8/JSON、応答の順序、読み戻し不一致、範囲外入力、通信切断、
 書き込み停滞・タイムアウトとロック解放を確認する。
+
+Status全項目の保持、未知のキー、両言語の翻訳キー、英語の初期表示も確認する。
