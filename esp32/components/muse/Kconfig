@@ -120,6 +120,9 @@ menu "Muse"
         config MUSE_BOARD_WAVESHARE_S3_LCD7
             bool "Waveshare ESP32-S3-Touch-LCD-7 (800x480 touch LCD, no audio)"
             depends on IDF_TARGET_ESP32S3
+        config MUSE_BOARD_SPOTPEAR_ESP32_AI_128
+            bool "SpotPear ESP32-AI-1.28 v1.0 (GC9A01, MAX98357A, NP0557)"
+            depends on IDF_TARGET_ESP32S3
         config MUSE_BOARD_WAVESHARE_S3_LCD128
             bool "Waveshare ESP32-S3-Touch-LCD-1.28 (240x240 round touch LCD, no audio)"
             depends on IDF_TARGET_ESP32S3
@@ -176,6 +179,7 @@ menu "Muse"
         default "ai_passport" if MUSE_BOARD_AI_PASSPORT
         default "waveshare_p4_lcd35" if MUSE_BOARD_WAVESHARE_P4_LCD35
         default "deotaland_rorolee" if MUSE_BOARD_DEOTALAND_ROROLEE
+        default "spotpear_esp32_ai_128" if MUSE_BOARD_SPOTPEAR_ESP32_AI_128
         default "none"
 
     # E-paper boards draw Muse with FreeInk (components/muse/eink/) instead
@@ -318,6 +322,17 @@ menu "Muse"
             also ends when Muse ends it, when nothing has been said or
             played for the idle limit, or at the length limit. Muse's VM
             has to accept voice calls from this gadget's credentials.
+
+    config MUSE_VOICE_NOTE_TOGGLE
+        bool "Press once to record a voice note, press again to send"
+        depends on MUSE_ENABLED && !MUSE_REALTIME_VOICE
+        default n
+        help
+            A talk-button press starts recording and the next press sends
+            the note. Releasing the button does not stop recording. A press
+            that wakes the display also starts the note. Recording still
+            ends at the normal 15-second limit. Replies remain text unless
+            a separate TTS integration is provided.
 
 if MUSE_REALTIME_VOICE
 

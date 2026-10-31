@@ -82,6 +82,7 @@ before adding a feature to one.
 | Waveshare ESP32-S3-Touch-LCD-7 | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-s3-lcd7` | `tools/muse/board.sh build lcd7` |
 | Waveshare ESP32-S3-Touch-LCD-1.28 | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-s3-lcd128` | `tools/muse/board.sh build lcd128` |
 | Waveshare ESP32-P4-WIFI6-Touch-LCD-3.5 | `esp32p4` | `devices/sdkconfig.muse;devices/sdkconfig.muse-waveshare-p4-lcd35` | `tools/muse/board.sh build p4lcd35` |
+| SpotPear ESP32-AI-1.28 v1.0 (experimental) | `esp32s3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-spotpear-esp32-ai-128` | `tools/muse/board.sh build spotpear` |
 | M5Stack StickC Plus2 | `esp32` | `devices/sdkconfig.muse;devices/sdkconfig.muse-m5stack-stickc-plus2` | manual |
 | M5Stack Core2 (v1.0) | `esp32` | `devices/sdkconfig.muse;devices/sdkconfig.muse-m5stack-core2` | `tools/muse/board.sh build core2` |
 | FoloToy AI Passport (experimental) | `esp32c3` | `devices/sdkconfig.muse;devices/sdkconfig.muse-ai-passport` | `tools/muse/board.sh build ai-passport` |
