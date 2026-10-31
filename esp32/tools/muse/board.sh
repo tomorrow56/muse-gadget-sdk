@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Build or flash Home Link for one board:
-#   tools/muse/board.sh build|flash <s3|s3n|s3-216|mosaico|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|xiao147|cores3|core2|fnk0104b|jc3248w535|lcd7|lcd128|vn183|ai-passport|echoear> [serial|port]
+#   tools/muse/board.sh build|flash <s3|s3n|s3-216|mosaico|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|xiao147|cores3|core2|fnk0104b|jc3248w535|lcd7|lcd128|spotpear|vn183|ai-passport|echoear> [serial|port]
 # Build log: /tmp/muse_build_<board>.log. flash finds the board's port by its
 # USB device (tools/muse/ports.py); with several of a kind attached, pass the
 # one's USB serial number (the MAC on native USB) or its port. Flashing from a
@@ -29,7 +29,7 @@
 # flashes through the board's Vibe Mode firmware with their mosaico.py: an
 # ESP-Iris System Update bundle, never esptool (devices/README.md).
 set -uo pipefail
-cmd=${1:?build|flash}; board=${2:?s3|s3n|s3-216|185c|mosaico|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|xiao147|cores3|core2|fnk0104b|jc3248w535|lcd7|lcd128|vn183|ai-passport|echoear}
+cmd=${1:?build|flash}; board=${2:?s3|s3n|s3-216|185c|mosaico|aipi|box3|c6|c6-206|watcher|sticks3|plus2|cardputer-adv|stopwatch|xiao147|cores3|core2|fnk0104b|jc3248w535|lcd7|lcd128|spotpear|vn183|ai-passport|echoear}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 case $board in
     s3)      profile=waveshare-s3-175c;    target=esp32s3 ;;
@@ -54,6 +54,7 @@ case $board in
     fnk0104b) profile=fnk0104b;            target=esp32s3 ;;
     jc3248w535) profile=guition-jc3248w535; target=esp32s3 ;;
     lcd7) profile=waveshare-s3-lcd7; target=esp32s3 ;;
+    spotpear) profile=spotpear-esp32-ai-128; target=esp32s3 ;;
     lcd128) profile=waveshare-s3-lcd128; target=esp32s3 ;;
     vn183)   profile=vn-s3-183;            target=esp32s3 ;;
     # Its CH9102 USB-UART bridge drops out above 230400 baud.

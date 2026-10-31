@@ -2095,6 +2095,18 @@ static void on_pairing_client_finished(uint32_t session_generation) {
 static void on_client_connected(void) {
     ui_set_ble("connected");
     led_status_set_state(LED_STATE_BLE_CONNECTED);
+#if CONFIG_HOMEHUB_BLE_DEVICE_INFO_ON_SUBSCRIBE
+    /* Experimental OPPO workaround: subscription precedes MTU negotiation.
+     * This is a disposable worker task, not the BLE host or main task. Let
+     * the client finish setting up its notification/MTU path before sending
+     * unsolicited public metadata. 500 ms is a test interval, not a protocol
+     * guarantee; keep this opt-in until checked on the affected phone. */
+    vTaskDelay(pdMS_TO_TICKS(500));
+    if (ble_server_has_connection() && !config_setup_complete()) {
+        ESP_LOGI(TAG, "compat: announcing public device info 500 ms after subscription");
+        on_get_device_info();
+    }
+#endif
 }
 
 static void on_client_disconnected(void) {

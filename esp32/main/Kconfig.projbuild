@@ -124,6 +124,16 @@ menu "ESP32 Device SDK"
             the classic ESP32) should disable this. The control API to the VM
             keeps working; the status turns green once the control session is up.
 
+    config HOMEHUB_BLE_DEVICE_INFO_ON_SUBSCRIBE
+        bool "Experimental: announce device info when setup notifications start"
+        depends on BT_NIMBLE_ENABLED
+        default n
+        help
+            Compatibility experiment for clients that subscribe but send no
+            setup requests. Send public device metadata once per subscription
+            while unpaired. This does not skip the pairing handshake or button
+            confirmation. Leave off unless testing this client behaviour.
+
     config HOMEHUB_BLE_PERSISTENT
         bool "Keep BLE running next to Wi-Fi and the Noise session"
         depends on BT_NIMBLE_ENABLED && !MUSE_ENABLED
