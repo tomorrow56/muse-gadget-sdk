@@ -171,6 +171,17 @@ a fresh encrypted session. Because these are community devices, pairing has no
 manufacturer verification and can't prevent an active man-in-the-middle
 attack. Set it up on a network you trust.
 
+## USB settings in a browser
+
+The [Web Serial settings page](tools/muse/SERIAL_SETUP.md) reads a connected
+Muse board's current settings and changes display sleep, brightness, volume,
+speaker enable and mic gain. It also shows every status field and the original
+JSON, including read-only connection details. English is the default; a language
+picker switches to Japanese without reconnecting or discarding edits.
+It uses the existing USB console protocol; no
+firmware update is needed. Start its localhost server and open the page in
+Chrome. It is separate from the Web Bluetooth setup page and the web flasher.
+
 ## Boards
 
 Boards marked UI run the full on-screen UI: an animated avatar, push-to-talk and
