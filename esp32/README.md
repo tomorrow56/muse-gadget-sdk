@@ -214,6 +214,7 @@ status screen.
 | Waveshare ESP32-S3-Touch-LCD-7 | UI, touch, settings, images; no built-in audio | `tools/muse/board.sh build lcd7` |
 | Waveshare ESP32-S3-Touch-LCD-1.28 | UI, touch, settings, images; no built-in audio | `tools/muse/board.sh build lcd128` |
 | Waveshare ESP32-P4-WIFI6-Touch-LCD-3.5 | 3.5 inch touch UI, push-to-talk, settings; Wi-Fi and BLE on its C6 | [Setup](devices/waveshare-p4-lcd35.md) |
+| SpotPear ESP32-AI-1.28 v1.0 (experimental) | Round UI, BOOT push-to-talk, MAX98357A speaker and NP0557 mic | `tools/muse/board.sh build spotpear` |
 | M5Stack StickC Plus2 | UI, push-to-talk, two-button menu, images | see [`AGENTS.md`](AGENTS.md#boards-with-the-full-ui-by-hand) |
 | M5Stack Core2 (v1.0) | UI, push-to-talk on the touch strip, touch menu, images | `tools/muse/board.sh build core2` |
 | Freenove FNK0104B | UI, touch, BOOT push-to-talk, settings, images | `tools/muse/board.sh build fnk0104b` |
