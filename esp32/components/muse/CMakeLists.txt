@@ -54,6 +54,9 @@ if(CONFIG_MUSE_ENABLED)
     else()
         list(APPEND srcs "muse_chat_link.c")   # text replies over Link's session
     endif()
+    if(CONFIG_MUSE_GOOGLE_TTS)
+        list(APPEND srcs "muse_google_tts.cpp")
+    endif()
     list(APPEND srcs "muse_chat_text.c")
     if(CONFIG_MUSE_CJK_FONT_NOTO)
         list(APPEND srcs "fonts/muse_font_cjk_noto_16.c")   # captions' CJK fallback

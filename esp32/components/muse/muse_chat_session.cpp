@@ -27,11 +27,12 @@
  *      the connection's long-lived POST /chat/subscribe stream: one or more
  *      assistant messages, each delta.message_start / text_append / message_done.
  *   3. Each finished message is shown at reading pace (see start_tts to
- *      speak it with a TTS API of your own; Muse doesn't speak gadget replies).
+ *      enable Google Cloud TTS for spoken replies).
  * A turn has no explicit end event; like Sidekick, it settles once every
  * message is done and nothing has arrived for a few seconds.
  *
- * Everything network-side runs on one task. The voice task talks to it through
+ * The VM connection runs on one task; optional Google TTS uses its own worker.
+ * The voice task talks to the VM task through
  * a command queue, a stream buffer of mic audio, an event queue (captions) and
  * a stream buffer of reply audio. A generation number tags each turn so that
  * events and audio of a cancelled turn are dropped.
@@ -78,6 +79,9 @@ extern "C" {
 }
 #include "muse_chat_priv.h"
 #include "sdkconfig.h"
+#if CONFIG_MUSE_GOOGLE_TTS
+#include "muse_google_tts.h"
+#endif
 #if CONFIG_MUSE_REALTIME_VOICE
 #include "muse_voice_call_priv.h"
 #endif
@@ -982,6 +986,9 @@ static void turn_reset_streams(void)
 
 static void turn_finish(void)
 {
+#if CONFIG_MUSE_GOOGLE_TTS
+    muse_google_tts_cancel();
+#endif
     turn_reset_streams();
     s_turn.phase = P_IDLE;
     s_turn.dict_id = s_turn.chat_id = 0;
@@ -1586,6 +1593,18 @@ static void start_tts(void)
         m.tts = TTS_ACTIVE;
         s_turn.tts_msg = i;
         s_turn.silent = true;
+#if CONFIG_MUSE_GOOGLE_TTS
+        const char *text = s_turn.texts ? s_turn.texts + i * TEXT_MAX : nullptr;
+        if (muse_settings_speaker_on() && muse_settings_volume() > 0 &&
+            muse_google_tts_start(text)) {
+            s_turn.silent = false;
+            m.pcm_frames = 0;
+            s_turn.mp3_len = 0;
+            s_turn.mp3_ended = false;
+            s_turn.kbps = s_turn.down_rate = 0;
+            mp3dec_init(&s_turn.dec);
+        }
+#endif
         ESP_LOGI(TAG, "showing message %s (%u chars)", m.id, (unsigned)m.len);
         show_reply_start(m);
         return;
@@ -1635,6 +1654,34 @@ static void pace_silently(void)
         s_turn.silent = false;
     }
 }
+
+#if CONFIG_MUSE_GOOGLE_TTS
+/* Only this task feeds the decoder. A cancelled worker owns separate storage
+ * and cannot write into a new turn's MP3, text or PCM buffers. */
+static void pump_google_tts(void)
+{
+    if (s_turn.tts_msg < 0 || s_turn.silent || s_turn.mp3_ended) return;
+    bool done, ok;
+    size_t n = muse_google_tts_read(s_turn.mp3 + s_turn.mp3_len,
+                                  MP3_BUF - s_turn.mp3_len, &done, &ok);
+    if (n) {
+        mark(M_MP3);
+        s_turn.mp3_len += n;
+    }
+    if (done) {
+        if (ok) {
+            s_turn.mp3_ended = true;
+        } else {
+            msg_t &m = s_turn.msgs[s_turn.tts_msg];
+            size_t shown = s_turn.texts ? strlen(s_turn.texts + s_turn.tts_msg * TEXT_MAX) : m.len;
+            m.pcm_start = s_turn.pcm_out;
+            m.pcm_frames = (uint32_t)(shown * MIC_RATE / TEXT_CHARS_PER_S);
+            s_turn.silent = true;
+            ESP_LOGW(TAG, "TTS unavailable, showing reply at reading pace");
+        }
+    }
+}
+#endif
 
 /* Decodes buffered MP3 while the reply buffer has room. */
 static void decode(void)
@@ -2048,6 +2095,11 @@ static void hatch_task(void *arg)
 {
     (void)arg;
     for (;;) {
+#if CONFIG_MUSE_GOOGLE_TTS
+        /* Reclaim a cancelled worker after its blocking network call returns,
+         * even if there is no new turn or the VM is temporarily offline. */
+        if (s_turn.phase == P_IDLE) muse_google_tts_cancel();
+#endif
         cmd_t cmd;
         /* Resting, the socket's keepalive (PING_US) needs no quicker polls.
          * Resting unconnected, Wi-Fi may nap (muse_wifi_nap): wait for a
@@ -2106,6 +2158,9 @@ static void hatch_task(void *arg)
         }
         if (s_turn.phase == P_WAIT_REPLY) {
             start_tts();
+#if CONFIG_MUSE_GOOGLE_TTS
+            pump_google_tts();
+#endif
             decode();
         }
         if (!s_connected) {
@@ -2355,11 +2410,22 @@ extern "C" size_t muse_hatch_turn_read(int16_t *pcm, size_t frames, int wait_ms)
 }
 
 /* Bench test: decodes the embedded test_reply.mp3 exactly as a reply is decoded. */
-static size_t mp3_selftest(int16_t **pcm_out)
+static size_t mp3_selftest(int16_t **pcm_out, bool google = false)
 {
     extern const uint8_t mp3_start[] asm("_binary_test_reply_mp3_start");
     extern const uint8_t mp3_end[] asm("_binary_test_reply_mp3_end");
     size_t len = mp3_end - mp3_start;
+    const uint8_t *data = mp3_start;
+    uint8_t *download = nullptr;
+#if CONFIG_MUSE_GOOGLE_TTS
+    if (google) {
+        download = muse_google_tts_fetch_test(&len);
+        if (!download) return 0;
+        data = download;
+    }
+#else
+    (void)google;
+#endif
     mp3dec_t *dec = (mp3dec_t *)psram_alloc(sizeof(mp3dec_t));
     int16_t *pcm = (int16_t *)psram_alloc(MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(int16_t));
     size_t cap = MIC_RATE * 10;
@@ -2368,6 +2434,7 @@ static size_t mp3_selftest(int16_t **pcm_out)
         free(dec);
         free(pcm);
         free(out);
+        free(download);
         return 0;
     }
     mp3dec_init(dec);
@@ -2377,7 +2444,7 @@ static size_t mp3_selftest(int16_t **pcm_out)
     int64_t t0 = now_us();
     while (off < len) {
         mp3dec_frame_info_t info;
-        int samples = mp3dec_decode_frame(dec, mp3_start + off, len - off, pcm, &info);
+        int samples = mp3dec_decode_frame(dec, data + off, len - off, pcm, &info);
         if (!info.frame_bytes) {
             break;
         }
@@ -2404,6 +2471,7 @@ static size_t mp3_selftest(int16_t **pcm_out)
              (unsigned)len, frames, rate, (unsigned)n, n / (double)MIC_RATE, (now_us() - t0) / 1000);
     free(dec);
     free(pcm);
+    free(download);
     *pcm_out = out;
     return n;
 }
@@ -2412,15 +2480,16 @@ struct selftest_t {
     TaskHandle_t caller;
     int16_t *pcm;
     size_t n;
+    bool google;
 };
 
 /* minimp3 wants ~16 KB of stack, more than the voice task has. */
-extern "C" size_t muse_hatch_mp3_selftest(int16_t **pcm_out)
+static size_t run_mp3_selftest(int16_t **pcm_out, bool google)
 {
-    selftest_t st = { xTaskGetCurrentTaskHandle(), nullptr, 0 };
+    selftest_t st = { xTaskGetCurrentTaskHandle(), nullptr, 0, google };
     auto body = [](void *arg) {
         auto *st = (selftest_t *)arg;
-        st->n = mp3_selftest(&st->pcm);
+        st->n = mp3_selftest(&st->pcm, st->google);
         xTaskNotifyGive(st->caller);
         vTaskSuspend(NULL);   /* the caller deletes it, which frees the PSRAM stack */
     };
@@ -2434,3 +2503,14 @@ extern "C" size_t muse_hatch_mp3_selftest(int16_t **pcm_out)
     *pcm_out = st.pcm;
     return st.n;
 }
+
+extern "C" size_t muse_hatch_mp3_selftest(int16_t **pcm_out)
+{
+    return run_mp3_selftest(pcm_out, false);
+}
+#if CONFIG_MUSE_GOOGLE_TTS
+extern "C" size_t muse_google_tts_selftest(int16_t **pcm_out)
+{
+    return run_mp3_selftest(pcm_out, true);
+}
+#endif

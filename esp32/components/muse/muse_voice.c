@@ -85,6 +85,10 @@ static volatile float s_monitor_db = -100.0f;
 static volatile bool s_chirp;
 static volatile bool s_loopback;
 static volatile bool s_mp3test;
+#if CONFIG_MUSE_GOOGLE_TTS
+static volatile bool s_google_tts_test;
+extern size_t muse_google_tts_selftest(int16_t **pcm_out);
+#endif
 static atomic_int s_call_view;
 static atomic_bool s_ptt_call;
 static atomic_bool s_shutdown;
@@ -1185,7 +1189,16 @@ static void voice_task(void *arg)
             if (s_mp3test) {
                 s_mp3test = false;
                 int16_t *pcm = NULL;
-                size_t n = muse_hatch_mp3_selftest(&pcm);
+                size_t n;
+#if CONFIG_MUSE_GOOGLE_TTS
+                if (s_google_tts_test) {
+                    s_google_tts_test = false;
+                    n = muse_google_tts_selftest(&pcm);
+                } else
+#endif
+                {
+                    n = muse_hatch_mp3_selftest(&pcm);
+                }
                 for (size_t i = 0; i < n; i += MUSE_AUDIO_CHUNK) {
                     muse_audio_write(pcm + i, n - i < MUSE_AUDIO_CHUNK ? n - i : MUSE_AUDIO_CHUNK);
                 }
@@ -1334,3 +1347,11 @@ bool muse_voice_notes_waiting(void)
 {
     return s_waiting;
 }
+
+#if CONFIG_MUSE_GOOGLE_TTS
+void muse_voice_request_tts_test(void)
+{
+    s_google_tts_test = true;
+    muse_voice_request_mp3test();
+}
+#endif

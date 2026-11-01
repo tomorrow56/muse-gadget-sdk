@@ -307,6 +307,35 @@ menu "Muse"
             them. Needs PSRAM. Without it, voice notes go over Home Link's own
             session to its paired VM and replies are shown as text.
 
+    config MUSE_GOOGLE_TTS
+        bool "Read voice-note replies with Google Cloud Text-to-Speech"
+        depends on MUSE_HATCH && SPIRAM && !MUSE_HATCH_COMPACT_BUFFERS && !MUSE_REALTIME_VOICE
+        select MBEDTLS_CERTIFICATE_BUNDLE
+        select MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY
+        default n
+        help
+            Send completed reply text to Google Cloud and play its MP3 audio.
+            Requires a billing-enabled Cloud project, the Text-to-Speech API
+            and a restricted API key. No phone or PC is needed for playback.
+            Speaker off/zero volume avoids synthesis. Errors retain captions.
+            Store the key only in an ignored local build sdkconfig, never
+            commit or distribute a configured firmware binary.
+
+    config MUSE_GOOGLE_TTS_API_KEY
+        string "Google Cloud Text-to-Speech API key (private)"
+        depends on MUSE_GOOGLE_TTS
+        default ""
+
+    config MUSE_GOOGLE_TTS_LANGUAGE
+        string "Google TTS language"
+        depends on MUSE_GOOGLE_TTS
+        default "ja-JP"
+
+    config MUSE_GOOGLE_TTS_VOICE
+        string "Google TTS voice name"
+        depends on MUSE_GOOGLE_TTS
+        default "ja-JP-Wavenet-B"
+
     config MUSE_REALTIME_VOICE
         bool "Live voice calls with Muse (experimental)"
         depends on (MUSE_HATCH || HOMEHUB_VOICE) && SPIRAM

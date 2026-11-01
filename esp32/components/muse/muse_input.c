@@ -782,6 +782,13 @@ static bool console_command(char *line, bool whole)
         return true;
     }
 #endif
+#if CONFIG_MUSE_GOOGLE_TTS
+    if (!strcmp(line, "tts.test")) {
+        muse_voice_request_tts_test();
+        printf("@tts queued\n");
+        return true;
+    }
+#endif
     if (!strcmp(line, "status")) {
         size_t cap = 1024;   /* long SSID, host and VM names escaped: past 512 */
         char *json = heap_caps_malloc(cap, MUSE_BIG_CAPS);
