@@ -59,6 +59,13 @@ static struct {
 static SemaphoreHandle_t s_lock;
 /* StopWatch samples this at the next press, never during an active call. */
 static atomic_bool s_voice_notes;
+#if CONFIG_MUSE_GOOGLE_TTS
+static const char *const s_tts_voices[] = {
+    "ja-JP-Wavenet-A", "ja-JP-Wavenet-B", "ja-JP-Wavenet-C", "ja-JP-Wavenet-D",
+};
+/* 255 means the configured build default, including custom voice names. */
+static atomic_uchar s_tts_voice = 255;
+#endif
 static nvs_handle_t s_nvs;
 static muse_setting_cb_t s_listener;
 
@@ -118,6 +125,11 @@ esp_err_t muse_settings_init(void)
     }
 
     uint8_t b;
+#if CONFIG_MUSE_GOOGLE_TTS
+    uint8_t voice = 255;
+    if (nvs_get_u8(s_nvs, "tts_voice", &voice) != ESP_OK || voice >= 4) voice = 255;
+    atomic_store(&s_tts_voice, voice);
+#endif
     load_u8("volume", &s.volume);
     if (nvs_get_u8(s_nvs, "speaker", &b) == ESP_OK) {
         s.speaker_on = b;
@@ -312,3 +324,28 @@ esp_err_t muse_settings_set_hatch_token(const char *token, bool append)
     }
     return err;
 }
+
+#if CONFIG_MUSE_GOOGLE_TTS
+const char *muse_settings_tts_voice(void)
+{
+    unsigned index = atomic_load(&s_tts_voice);
+    return index < 4 ? s_tts_voices[index] : CONFIG_MUSE_GOOGLE_TTS_VOICE;
+}
+
+esp_err_t muse_settings_set_tts_voice(const char *voice)
+{
+    unsigned index;
+    if (!voice || strcmp(CONFIG_MUSE_GOOGLE_TTS_LANGUAGE, "ja-JP")) return ESP_ERR_INVALID_ARG;
+    for (index = 0; index < 4; index++) {
+        if (!strcmp(voice, s_tts_voices[index])) break;
+    }
+    if (index == 4) return ESP_ERR_INVALID_ARG;
+    esp_err_t err;
+    LOCKED({
+        err = nvs_set_u8(s_nvs, "tts_voice", index);
+        if (err == ESP_OK) err = nvs_commit(s_nvs);
+        if (err == ESP_OK) atomic_store(&s_tts_voice, index);
+    });
+    return err;
+}
+#endif

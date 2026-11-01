@@ -794,8 +794,14 @@ static bool console_command(char *line, bool whole)
         char *json = heap_caps_malloc(cap, MUSE_BIG_CAPS);
         if (json) {
             muse_ble_status_json(json, cap);
+#if CONFIG_MUSE_GOOGLE_TTS
+            printf("@status {\"board\":\"%s\",\"chat\":%s,\"device\":%s,"
+                   "\"tts\":{\"enabled\":true,\"voice\":\"%s\",\"language\":\"%s\"}}\n",
+                   muse_board->name, CHAT_OVER_SERIAL, json, muse_settings_tts_voice(), CONFIG_MUSE_GOOGLE_TTS_LANGUAGE);
+#else
             printf("@status {\"board\":\"%s\",\"chat\":%s,\"device\":%s}\n", muse_board->name,
                    CHAT_OVER_SERIAL, json);
+#endif
             fflush(stdout);
             free(json);
         }

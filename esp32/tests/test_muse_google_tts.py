@@ -41,6 +41,8 @@ static void log_fake(const char *, const char *, ...) {}
 #define ESP_LOGI(...) log_fake(__VA_ARGS__)
 #define ESP_LOGW(...) log_fake(__VA_ARGS__)
 static const char *esp_err_to_name(int) { return "fake"; }
+static const char *selected_voice = "ja-JP-Wavenet-B";
+extern "C" const char *muse_settings_tts_voice() { return selected_voice; }
 static int64_t clock_us;
 static int64_t esp_timer_get_time() { return clock_us; }
 static void *heap_caps_malloc(size_t n, int) { return malloc(n); }
@@ -93,7 +95,7 @@ static int xTaskCreatePinnedToCoreWithCaps(void (*body)(void *),const char *,int
 static void vTaskDeleteWithCaps(void *) {}
 '''
         (out / "fake.h").write_text(fake)
-        for name in ["sdkconfig.h","esp_crt_bundle.h","esp_heap_caps.h","esp_http_client.h","esp_log.h","esp_timer.h","freertos/FreeRTOS.h","freertos/task.h","freertos/idf_additions.h","mbedtls/base64.h"]:
+        for name in ["sdkconfig.h","esp_err.h","esp_crt_bundle.h","esp_heap_caps.h","esp_http_client.h","esp_log.h","esp_timer.h","freertos/FreeRTOS.h","freertos/task.h","freertos/idf_additions.h","mbedtls/base64.h"]:
             p=out/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('#include "fake.h"\n')
         harness=r'''
 #include "fake.h"
@@ -107,11 +109,12 @@ static void reset() {
 int main(int argc,char **argv) {
  assert(argc==2);reset();std::string test=argv[1];size_t len;
  if(test=="request") {
+  selected_voice="ja-JP-Wavenet-D";
   auto *p=fetch("日本語\n\"返答\"",nullptr,&len);
   assert(p && len==3 && !memcmp(p,"ID3",3));free(p);
   assert(key=="test-only-key");cJSON *j=cJSON_Parse(posted.c_str());assert(j);
   assert(!strcmp(cJSON_GetObjectItem(cJSON_GetObjectItem(j,"input"),"text")->valuestring,"日本語\n\"返答\""));
-  assert(!strcmp(cJSON_GetObjectItem(cJSON_GetObjectItem(j,"voice"),"name")->valuestring,"ja-JP-Wavenet-B"));cJSON_Delete(j);
+  assert(!strcmp(cJSON_GetObjectItem(cJSON_GetObjectItem(j,"voice"),"name")->valuestring,"ja-JP-Wavenet-D"));cJSON_Delete(j);
  } else if(test=="bad_response") {
   for (const char *s : {"{}","[]",R"({"audioContent":4})",R"({"audioContent":""})",R"({"audioContent":"!!!!"})",R"({"audioContent":"SUQz"} junk)"}) {
    response=s;assert(!fetch("text",nullptr,&len) && len==0);

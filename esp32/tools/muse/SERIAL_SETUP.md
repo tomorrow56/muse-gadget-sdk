@@ -55,3 +55,13 @@ node --test tools/muse/serial_settings.test.mjs tools/muse/serial_status.test.mj
 書き込み停滞・タイムアウトとロック解放を確認する。
 
 Status全項目の保持、未知のキー、両言語の翻訳キー、英語の初期表示も確認する。
+
+### Google TTSの声
+
+対応ファームウェアでは「サウンド → 読み上げの声」から日本語WaveNet A〜Dを
+選び、「変更を保存」で実機に保存できる。A・Bは女性、C・Dは男性。
+次の返答から反映し、再起動後も保持する。旧版やTTS非対応のファームウェアでは
+選択欄を無効化し、既存の設定は引き続き利用できる。
+
+UARTでは `>tts_voice=ja-JP-Wavenet-D` で設定し、`>status` の `tts.voice` で確認する。
+`>tts.test` で保存済みの声を試聴できる。

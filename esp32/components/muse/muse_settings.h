@@ -58,6 +58,10 @@ bool muse_settings_speaker_on(void);    /* off: replies are shown, not played */
 int muse_settings_mic_gain(void);       /* dB, 0..MUSE_MIC_GAIN_MAX */
 int muse_settings_brightness(void);     /* 10..100 */
 int muse_settings_sleep_s(void);        /* 0 = never */
+/* Google TTS: immutable voice-name snapshot; setter persists before publishing.
+ * Supported runtime choices are Japanese WaveNet A/B/C/D. */
+const char *muse_settings_tts_voice(void);
+esp_err_t muse_settings_set_tts_voice(const char *voice);
 bool muse_settings_wifi_on(void);
 bool muse_settings_ble_on(void);
 /* StopWatch: false selects realtime PTT; true selects voice notes only. */

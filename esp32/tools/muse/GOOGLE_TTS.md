@@ -52,3 +52,18 @@ References:
 - https://docs.cloud.google.com/text-to-speech/docs/create-audio
 - https://docs.cloud.google.com/docs/authentication/api-keys
 - https://cloud.google.com/text-to-speech/pricing
+
+## Change the voice over USB
+
+Open `serial_setup.html` in Chrome, connect the device, choose **Sound →
+Text-to-speech voice**, then **Save changes**. Japanese WaveNet A/B are female;
+C/D are male. The UI defaults to English and can switch to Japanese.
+The device saves the choice in NVS and uses it for the next synthesis, including
+`>tts.test`, without restarting. An already running utterance keeps its voice.
+Reconnecting or rebooting reads back the saved value. The default before any
+choice is the build's `CONFIG_MUSE_GOOGLE_TTS_VOICE`.
+
+The equivalent UART command is `>tts_voice=ja-JP-Wavenet-D`. `>status` reports
+`tts.enabled`, `tts.language` and `tts.voice`. Only firmware with this capability
+and Japanese TTS enables the selector; existing non-TTS firmware retains all
+other settings. Invalid names and failed NVS writes are rejected.

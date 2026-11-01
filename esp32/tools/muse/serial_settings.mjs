@@ -4,15 +4,24 @@ export class MuseSerialError extends Error {
   constructor(code, message) { super(message); this.code = code; }
 }
 
+export const TTS_VOICES = Object.freeze(['ja-JP-Wavenet-A', 'ja-JP-Wavenet-B', 'ja-JP-Wavenet-C', 'ja-JP-Wavenet-D']);
 export const SETTINGS = Object.freeze({
   sleep: { min: 0, max: 3600 }, brightness: { min: 10, max: 100 },
   volume: { min: 0, max: 100 }, mic_gain: { min: 0, max: 36 }, speaker: { boolean: true },
+  tts_voice: { choices: TTS_VOICES, optional: true },
 });
 
+export function settingValue(status, key) {
+  return key === 'tts_voice' ? status.tts?.voice : status.device[key];
+}
+export function settingKeys(status) {
+  return Object.keys(SETTINGS).filter(key => !SETTINGS[key].optional ||
+    (status.tts?.enabled === true && status.tts?.language === 'ja-JP'));
+}
 export function validateSetting(key, value) {
   const rule = Object.hasOwn(SETTINGS, key) ? SETTINGS[key] : null;
   if (!rule) throw new MuseSerialError('KEY', 'This setting is not supported.');
-  if (rule.boolean ? typeof value !== 'boolean' :
+  if (rule.choices ? !rule.choices.includes(value) : rule.boolean ? typeof value !== 'boolean' :
     !Number.isInteger(value) || value < rule.min || value > rule.max) {
     throw new MuseSerialError('VALUE', 'The value is outside the allowed range.');
   }
@@ -24,7 +33,13 @@ export function parseStatus(line) {
   if (at < 0) return null;
   const status = JSON.parse(line.slice(at + 8));
   if (typeof status.board !== 'string' || !status.device) throw new MuseSerialError('STATUS', 'The device returned an invalid Muse status.');
-  for (const key of Object.keys(SETTINGS)) validateSetting(key, status.device[key]);
+  for (const key of settingKeys(status)) {
+    const value = settingValue(status, key);
+    // Preserve a custom build-default voice as read-only current status.
+    if (SETTINGS[key].choices) {
+      if (typeof value !== 'string' || !value || value.length > 127) throw new MuseSerialError('STATUS', 'Invalid voice status.');
+    } else validateSetting(key, value);
+  }
   return status;
 }
 
@@ -119,7 +134,7 @@ export class MuseSerial {
         return true;
       });
       const status = await this.queryNow();
-      if (status.device[key] !== value) throw new MuseSerialError('READBACK', 'The readback did not match. Reload the device values.');
+      if (settingValue(status, key) !== value) throw new MuseSerialError('READBACK', 'The readback did not match. Reload the device values.');
       return status;
     });
   }

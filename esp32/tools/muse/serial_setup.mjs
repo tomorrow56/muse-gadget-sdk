@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates. Apache-2.0.
-import { MuseSerial, SETTINGS } from './serial_settings.mjs';
-import { DEFAULT_LANGUAGE, TEXT, translate, errorText } from './serial_i18n.mjs';
+import { MuseSerial, SETTINGS, TTS_VOICES, settingKeys, settingValue } from './serial_settings.mjs?v=tts-voice-1';
+import { DEFAULT_LANGUAGE, TEXT, translate, errorText } from './serial_i18n.mjs?v=tts-voice-1';
 import { flattenStatus, statusValue } from './serial_status.mjs';
 const $ = id => document.getElementById(id);
 let session = null, confirmed = null, busy = false, language = DEFAULT_LANGUAGE, readAt = null;
@@ -8,7 +8,7 @@ let notice = { key: 'initial', kind: '', params: {} };
 const history = [], keys = Object.keys(SETTINGS);
 const t = (key, params) => translate(language, key, params);
 const clock = time => new Date(time).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US');
-const values = () => Object.fromEntries(keys.map(key => [key, key === 'speaker' ? $(key).checked : $(key).value === '' ? NaN : Number($(key).value)]));
+const values = () => Object.fromEntries(keys.map(key => [key, key === 'speaker' ? $(key).checked : key === 'tts_voice' ? $(key).value : $(key).value === '' ? NaN : Number($(key).value)]));
 function params(raw = {}) {
   return { ...raw, ...(raw.setting ? { setting: t(`setting.${raw.setting}`) } : {}), ...(raw.error ? { error: errorText(language, raw.error) } : {}) };
 }
@@ -36,7 +36,7 @@ function renderStatus() {
 }
 function changed() {
   if (!confirmed) return [];
-  const draft = values(); return keys.filter(key => draft[key] !== confirmed.device[key]);
+  const draft = values(); return settingKeys(confirmed).filter(key => draft[key] !== settingValue(confirmed, key));
 }
 function update() {
   const online = Boolean(session?.online), edits = changed();
@@ -45,6 +45,9 @@ function update() {
   $('connection').textContent = t(busy ? 'busy' : online ? 'online' : 'offline');
   $('connection').classList.toggle('online', online);
   $('fields').disabled = busy || !online || !confirmed;
+  const ttsAvailable = confirmed && settingKeys(confirmed).includes('tts_voice');
+  $('tts_voice').disabled = busy || !online || !ttsAvailable;
+  $('tts-help').textContent = t(ttsAvailable ? 'ttsHint' : 'ttsUnavailable');
   $('refresh').disabled = $('wake').disabled = busy || !online;
   $('save').disabled = busy || !online || !confirmed || !edits.length || !$('settings').checkValidity();
   $('change-count').textContent = t(!confirmed ? 'waiting' : edits.length ? 'dirty' : 'unchanged', { count: edits.length });
@@ -59,8 +62,18 @@ function update() {
 }
 function show(status, { preserveDraft = false } = {}) {
   confirmed = status; readAt = Date.now();
-  if (!preserveDraft) for (const key of keys) {
-    if (key === 'speaker') $(key).checked = status.device[key]; else $(key).value = status.device[key];
+  if (!preserveDraft) {
+    $('tts-custom')?.remove();
+    const voice = settingValue(status, 'tts_voice');
+    if (voice && !TTS_VOICES.includes(voice)) {
+      const option = document.createElement('option');
+      option.id = 'tts-custom'; option.value = voice; option.textContent = voice; option.disabled = true;
+      $('tts_voice').append(option);
+    }
+    for (const key of keys) {
+      if (key === 'speaker') $(key).checked = settingValue(status, key);
+      else $(key).value = settingValue(status, key) ?? '';
+    }
   }
   renderStatus(); update();
 }

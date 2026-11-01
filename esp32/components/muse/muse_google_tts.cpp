@@ -9,6 +9,9 @@
 #include <cstring>
 #include <new>
 #include "sdkconfig.h"
+extern "C" {
+#include "muse_settings.h"
+}
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
@@ -63,6 +66,7 @@ static uint8_t *fetch(const char *text, const std::atomic<bool> *cancel, size_t 
     if (!CONFIG_MUSE_GOOGLE_TTS_API_KEY[0] || !text || !text[0] || strlen(text) >= TEXT_MAX) {
         return nullptr;
     }
+    const char *voice_name = muse_settings_tts_voice();
     response_t response = {};
     response.buf = static_cast<uint8_t *>(heap_caps_malloc(RESPONSE_MAX + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     response.cancelled = cancel;
@@ -74,7 +78,7 @@ static uint8_t *fetch(const char *text, const std::atomic<bool> *cancel, size_t 
     bool built = root && input && voice && config &&
         cJSON_AddStringToObject(input, "text", text) &&
         cJSON_AddStringToObject(voice, "languageCode", CONFIG_MUSE_GOOGLE_TTS_LANGUAGE) &&
-        cJSON_AddStringToObject(voice, "name", CONFIG_MUSE_GOOGLE_TTS_VOICE) &&
+        cJSON_AddStringToObject(voice, "name", voice_name) &&
         cJSON_AddStringToObject(config, "audioEncoding", "MP3") &&
         cJSON_AddNumberToObject(config, "sampleRateHertz", 16000);
     char *body = built ? cJSON_PrintUnformatted(root) : nullptr;
@@ -126,7 +130,7 @@ static uint8_t *fetch(const char *text, const std::atomic<bool> *cancel, size_t 
         *len = 0;
         return nullptr;
     }
-    ESP_LOGI(TAG, "synthesized %u MP3 bytes (%s)", (unsigned)*len, CONFIG_MUSE_GOOGLE_TTS_VOICE);
+    ESP_LOGI(TAG, "synthesized %u MP3 bytes (%s)", (unsigned)*len, voice_name);
     return response.buf;
 }
 

@@ -345,3 +345,7 @@ td:first-child { color: var(--accent); font: 11px/1.7 ui-monospace, monospace; }
 th:last-child, td:last-child { width: 30%; padding-right: 0; }
 #status-json { max-height: 320px; overflow: auto; padding: 16px; border-radius: 8px; background: #121722; font: 12px/1.65 ui-monospace, monospace; }
 @media (max-width: 620px) { .header-controls { width: 100%; } .status-card { padding: 20px; } }
+
+/* Voice choice uses the same width as the sound controls. */
+#tts_voice { width: 100%; font-size: 14px; padding: 11px 12px; }
+#tts_voice:disabled { opacity: .55; }

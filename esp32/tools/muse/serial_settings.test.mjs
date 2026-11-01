@@ -1,7 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates. Apache-2.0.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MuseSerial, parseStatus } from './serial_settings.mjs';
+import { MuseSerial, parseStatus, settingKeys, settingValue } from './serial_settings.mjs';
 
 const initial = () => ({ board: 'SpotPear ESP32-AI-1.28 v1.0', device: {
   name: 'MuseGadget-test', fw: 'test', sleep: 0, brightness: 80, volume: 70, mic_gain: 30, speaker: true,
@@ -16,7 +16,8 @@ class Port {
       if (command === '>status') this.status();
       else if (command.startsWith('>')) {
         const [key, raw] = command.slice(1).split('=');
-        this.state.device[key] = key === 'speaker' ? raw === '1' : Number(raw);
+        if (key === 'tts_voice') this.state.tts.voice = raw;
+        else this.state.device[key] = key === 'speaker' ? raw === '1' : Number(raw);
         this.emit(`\x1b[32mI (12) muse_ble: cmd ${key}=${raw} -> ok\x1b[0m\r\n`);
       }
     } });
@@ -104,4 +105,38 @@ test('connect timeout closes the port and never changes settings', async () => {
   const session = new MuseSerial(port);
   await assert.rejects(session.connect({ readyTimeout: 20 }), { code: 'CONNECT_TIMEOUT' });
   assert.ok(port.closed); assert.deepEqual(port.commands, ['>status']);
+});
+
+test('legacy and TTS-disabled firmware retain ordinary settings', () => {
+  const old = initial();
+  assert.ok(!settingKeys(parseStatus('@status ' + JSON.stringify(old))).includes('tts_voice'));
+  old.tts = { enabled: false, voice: '' };
+  assert.ok(!settingKeys(parseStatus('@status ' + JSON.stringify(old))).includes('tts_voice'));
+});
+test('voice selection uses its exact string and verifies readback', async t => {
+  const port = new Port(); port.state.tts = { enabled: true, language: 'ja-JP', voice: 'ja-JP-Wavenet-B' };
+  const { session } = await connect(port); t.after(() => session.close());
+  assert.ok(settingKeys(port.state).includes('tts_voice'));
+  const status = await session.set('tts_voice', 'ja-JP-Wavenet-D');
+  assert.equal(settingValue(status, 'tts_voice'), 'ja-JP-Wavenet-D');
+  assert.deepEqual(port.commands.slice(1), ['>tts_voice=ja-JP-Wavenet-D', '>status']);
+});
+test('invalid and injected voice names never reach the device', async t => {
+  const { port, session } = await connect(); t.after(() => session.close());
+  for (const value of ['', null, 1, 'ja-JP-Wavenet-E', 'ja-JP-Wavenet-B\\n>sleep=0', '__proto__']) {
+    assert.throws(() => session.set('tts_voice', value), { code: 'VALUE' });
+  }
+  assert.deepEqual(port.commands, ['>status']);
+});
+test('voice ACK without actual persistence is rejected by readback', async t => {
+  const port = new Port(); port.state.tts = { enabled: true, language: 'ja-JP', voice: 'ja-JP-Wavenet-B' };
+  const { session } = await connect(port); t.after(() => session.close());
+  port.onWrite = command => command === '>status' ? port.status() : port.emit('muse_ble: cmd tts_voice=ja-JP-Wavenet-C -> ok\n');
+  await assert.rejects(session.set('tts_voice', 'ja-JP-Wavenet-C'), { code: 'READBACK' });
+});
+test('malformed voice status fails while custom build defaults remain readable', () => {
+  const status = initial(); status.tts = { enabled: true, language: 'ja-JP', voice: 3 };
+  assert.throws(() => parseStatus('@status ' + JSON.stringify(status)), { code: 'STATUS' });
+  status.tts.voice = 'ja-JP-Neural2-B';
+  assert.equal(settingValue(parseStatus('@status ' + JSON.stringify(status)), 'tts_voice'), 'ja-JP-Neural2-B');
 });

@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Muse USB settings</title>
-  <link rel="stylesheet" href="serial_setup.css">
+  <link rel="stylesheet" href="serial_setup.css?v=tts-voice-1">
 </head>
 <body>
   <main>
@@ -44,7 +44,16 @@
             <label class="switch-row" for="speaker"><span data-i18n="setting.speaker">Enable speaker</span><input id="speaker" type="checkbox" role="switch"></label>
             <label for="mic_gain"><span data-i18n="setting.mic_gain">Microphone gain</span><output id="mic_gain-value">—</output></label>
             <input id="mic_gain" type="range" min="0" max="36" step="1" value="0">
-            <p class="hint" data-i18n="micHint">Adjust microphone sensitivity. This does not add text-to-speech.</p>
+            <p class="hint" data-i18n="micHint">Adjust microphone sensitivity.</p>
+            <label for="tts_voice" data-i18n="setting.tts_voice">Text-to-speech voice</label>
+            <select id="tts_voice" aria-describedby="tts-help" disabled>
+              <option value="" selected disabled data-i18n="ttsChoose">Select a voice</option>
+              <option value="ja-JP-Wavenet-A" data-i18n="ttsVoiceA">WaveNet A · Female</option>
+              <option value="ja-JP-Wavenet-B" data-i18n="ttsVoiceB">WaveNet B · Female</option>
+              <option value="ja-JP-Wavenet-C" data-i18n="ttsVoiceC">WaveNet C · Male</option>
+              <option value="ja-JP-Wavenet-D" data-i18n="ttsVoiceD">WaveNet D · Male</option>
+            </select>
+            <p id="tts-help" class="hint" data-i18n="ttsUnavailable">Requires firmware with Japanese Google TTS voice settings.</p>
           </section>
         </div>
       </fieldset>
@@ -64,6 +73,6 @@
     <details class="help"><summary data-i18n="history">Activity</summary><ol id="events" aria-label="Activity" data-i18n-aria="history"></ol></details>
     <footer>USB SERIAL · 115200 bps <span data-i18n="footer">Settings stay on your device.</span></footer>
   </main>
-  <script type="module" src="serial_setup.mjs"></script>
+  <script type="module" src="serial_setup.mjs?v=tts-voice-1"></script>
 </body>
 </html>
